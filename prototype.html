@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股长期投资看板 - 原型</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
+
+.header { background: #001529; height: 56px; display: flex; align-items: center; padding: 0 24px; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
+.header-logo { color: #fff; font-size: 18px; font-weight: bold; margin-right: 40px; cursor: pointer; }
+.header-nav { display: flex; gap: 8px; }
+.header-nav a { color: rgba(255,255,255,.65); cursor: pointer; padding: 0 16px; height: 56px; line-height: 56px; font-size: 14px; transition: color .2s; text-decoration: none; }
+.header-nav a:hover, .header-nav a.active { color: #fff; background: rgba(255,255,255,.08); }
+
+.content { margin-top: 56px; min-height: calc(100vh - 56px); }
+.page { display: none; padding: 24px; }
+.page.active { display: block; }
+.footer { text-align: center; padding: 16px; color: #999; font-size: 13px; }
+
+.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.card-title .badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: normal; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+.search-box { max-width: 600px; margin: 0 auto; }
+.search-input { width: 100%; height: 48px; border: 2px solid #1677ff; border-radius: 8px; padding: 0 16px; font-size: 16px; outline: none; }
+.search-input:focus { box-shadow: 0 0 0 3px rgba(22,119,255,.15); }
+.search-hint { text-align: center; color: #999; margin-top: 12px; font-size: 13px; }
+.search-dropdown { background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); margin-top: 4px; overflow: hidden; display: none; }
+.search-dropdown.show { display: block; }
+.search-item { padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; }
+.search-item:hover { background: #f5f5f5; }
+.type-tag { font-size: 12px; padding: 2px 6px; border-radius: 3px; }
+.tag-stock { background: #e6f4ff; color: #1677ff; }
+.tag-industry { background: #f6ffed; color: #52c41a; }
+
+.hero { text-align: center; padding: 60px 0 40px; }
+.hero h1 { font-size: 28px; margin-bottom: 8px; }
+.hero p { color: #666; margin-bottom: 32px; }
+
+.metric { text-align: center; }
+.metric-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.metric-label { font-size: 13px; color: #999; }
+.metric-up { color: #cf1322; }
+.metric-down { color: #3f8600; }
+
+.chart-placeholder { background: #fafafa; border: 1px dashed #d9d9d9; border-radius: 8px; height: 300px; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 14px; }
+
+.pie-chart { width: 200px; height: 200px; border-radius: 50%; margin: 0 auto; }
+.pie-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; justify-content: center; }
+.pie-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.pie-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.chain { display: flex; align-items: center; justify-content: center; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+.chain-node { background: #fff; border: 2px solid #1677ff; border-radius: 8px; padding: 12px 20px; cursor: pointer; text-align: center; min-width: 120px; transition: all .2s; }
+.chain-node:hover { background: #e6f4ff; transform: scale(1.05); }
+.chain-node.current { background: #1677ff; color: #fff; border-color: #1677ff; }
+.chain-node .label { font-size: 13px; opacity: .7; }
+.chain-node .name { font-weight: 600; }
+.chain-arrow { font-size: 24px; color: #1677ff; padding: 0 8px; }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; padding: 12px 16px; background: #fafafa; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 13px; color: #666; }
+.table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+.table tr:hover td { background: #fafafa; }
+.table .clickable { color: #1677ff; cursor: pointer; }
+.table .clickable:hover { text-decoration: underline; }
+
+.sub-sector-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; padding: 16px; transition: all .2s; }
+.sub-sector-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.sub-sector-card h4 { margin-bottom: 8px; }
+.sub-sector-card p { font-size: 13px; color: #666; line-height: 1.6; }
+.sub-sector-card .players { margin-top: 8px; }
+.sub-sector-card .player-tag { display: inline-block; background: #f0f0f0; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px 4px 2px 0; color: #555; }
+
+.bb-bar { display: flex; height: 32px; border-radius: 4px; overflow: hidden; margin: 12px 0; }
+.bb-bull { background: #cf1322; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; }
+.bb-neutral { background: #faad14; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; }
+.bb-bear { background: #3f8600; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; }
+.bb-label { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+
+.watch-card { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #fff; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: pointer; transition: all .2s; }
+.watch-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.watch-card .left { display: flex; align-items: center; gap: 16px; }
+.watch-card .icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.watch-card .info h3 { font-size: 15px; margin-bottom: 2px; }
+.watch-card .info p { font-size: 12px; color: #999; }
+.watch-card .right { text-align: right; }
+.watch-card .right .time { font-size: 12px; color: #999; }
+.watch-card .right .btn-refresh { margin-top: 4px; padding: 4px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; cursor: pointer; background: #fff; }
+.watch-card .right .btn-refresh:hover { border-color: #1677ff; color: #1677ff; }
+
+.tabs { display: flex; gap: 0; border-bottom: 1px solid #f0f0f0; margin-bottom: 20px; }
+.tab { padding: 12px 20px; cursor: pointer; font-size: 14px; color: #666; border-bottom: 2px solid transparent; }
+.tab:hover { color: #1677ff; }
+.tab.active { color: #1677ff; border-bottom-color: #1677ff; font-weight: 600; }
+
+.report-item { padding: 16px 0; border-bottom: 1px solid #f0f0f0; }
+.report-item:last-child { border-bottom: none; }
+.report-item .meta { display: flex; gap: 16px; margin-bottom: 6px; font-size: 13px; color: #999; }
+.report-item .title { font-weight: 500; margin-bottom: 4px; }
+.report-item .summary { font-size: 13px; color: #666; line-height: 1.6; }
+
+@media (max-width: 1200px) { .grid-4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo" onclick="showPage('home')">Finance Analysis</div>
+  <div class="header-nav">
+    <a class="active" onclick="showPage('home')" data-page="home">首页</a>
+    <a onclick="showPage('watchlist')" data-page="watchlist">关注列表</a>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <h1>A 股长期投资看板</h1>
+    <p>输入股票或行业，获取 AI 研报分析与产业链洞察</p>
+    <div class="search-box">
+      <input class="search-input" placeholder="输入股票名称/代码 或 行业名称，如：机器人、000001" onfocus="document.getElementById('search-drop').classList.add('show')" onblur="setTimeout(()=>document.getElementById('search-drop').classList.remove('show'),200)" oninput="handleSearch(this.value)">
+      <div class="search-dropdown" id="search-drop">
+        <div class="search-item" onclick="showPage('stock')"><span>平安银行 <span style="color:#999">000001</span></span><span class="type-tag tag-stock">个股</span></div>
+        <div class="search-item" onclick="showPage('stock')"><span>招商银行 <span style="color:#999">600036</span></span><span class="type-tag tag-stock">个股</span></div>
+        <div class="search-item" onclick="showPage('industry')"><span>机器人 <span style="color:#999">高端装备</span></span><span class="type-tag tag-industry">行业</span></div>
+      </div>
+    </div>
+    <div class="search-hint">热门：机器人 | 新能源 | 半导体 | 人工智能</div>
+  </div>
+  <div style="max-width:1400px;margin:0 auto;">
+    <div class="card">
+      <div class="card-title">关注列表</div>
+      <div class="grid-4">
+        <div class="watch-card" onclick="showPage('stock')"><div class="left"><div class="icon" style="background:#e6f4ff;color:#1677ff;">银</div><div class="info"><h3>招商银行</h3><p>600036 · 银行</p></div></div><div class="right"><div class="time">3小时前更新</div></div></div>
+        <div class="watch-card" onclick="showPage('industry')"><div class="left"><div class="icon" style="background:#f6ffed;color:#52c41a;">机</div><div class="info"><h3>机器人</h3><p>高端装备 · 行业</p></div></div><div class="right"><div class="time">1天前更新</div></div></div>
+        <div class="watch-card" onclick="showPage('stock')"><div class="left"><div class="icon" style="background:#fff7e6;color:#fa8c16;">芯</div><div class="info"><h3>中芯国际</h3><p>688981 · 半导体</p></div></div><div class="right"><div class="time">2天前更新</div></div></div>
+        <div class="watch-card" onclick="showPage('industry')"><div class="left"><div class="icon" style="background:#f9f0ff;color:#722ed1;">新</div><div class="info"><h3>新能源</h3><p>电力设备 · 行业</p></div></div><div class="right"><div class="time">3天前更新</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">最近分析记录</div>
+      <table class="table">
+        <thead><tr><th>类型</th><th>名称</th><th>分析时间</th><th>研报数</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td><span class="type-tag tag-stock">个股</span></td><td class="clickable" onclick="showPage('stock')">招商银行 600036</td><td>2026-05-27 09:30</td><td>12</td><td class="clickable" onclick="showPage('stock')">查看</td></tr>
+          <tr><td><span class="type-tag tag-industry">行业</span></td><td class="clickable" onclick="showPage('industry')">机器人</td><td>2026-05-26 14:20</td><td>28</td><td class="clickable" onclick="showPage('industry')">查看</td></tr>
+          <tr><td><span class="type-tag tag-stock">个股</span></td><td class="clickable" onclick="showPage('stock')">中芯国际 688981</td><td>2026-05-25 10:15</td><td>8</td><td class="clickable" onclick="showPage('stock')">查看</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="footer">A 股长期投资看板 2026 · 原型演示</div>
+</div>
+
+<!-- STOCK DETAIL -->
+<div class="page" id="page-stock">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <span style="cursor:pointer;color:#1677ff;font-size:14px;" onclick="showPage('home')">首页</span>
+      <span style="color:#ccc">/</span>
+      <span style="font-size:14px;color:#999;">个股详情</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px;">
+      <h2 style="font-size:24px;">招商银行</h2>
+      <span style="color:#999;">600036.SH</span>
+      <span style="background:#e6f4ff;color:#1677ff;padding:2px 8px;border-radius:4px;font-size:12px;">银行</span>
+    </div>
+    <p style="color:#999;font-size:13px;margin-bottom:24px;">所属行业：<span style="color:#1677ff;cursor:pointer;" onclick="showPage('industry')">银行</span></p>
+
+    <div class="grid-4" style="margin-bottom:24px;">
+      <div class="card metric"><div class="metric-value metric-down">38.52</div><div class="metric-label">当前股价 (元)</div></div>
+      <div class="card metric"><div class="metric-value">5.82</div><div class="metric-label">PE (TTM)</div></div>
+      <div class="card metric"><div class="metric-value">0.98</div><div class="metric-label">PB</div></div>
+      <div class="card metric"><div class="metric-value metric-up">14.26%</div><div class="metric-label">ROE</div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:24px;">
+      <div class="card"><div class="card-title">财务数据趋势</div><div class="chart-placeholder"><div style="text-align:center;"><div style="font-size:40px;margin-bottom:8px;">📈</div><div>营收 / 净利润 / ROE 多季度折线图</div><div style="color:#ccc;margin-top:4px;">2024Q1 → 2026Q1</div></div></div></div>
+      <div class="card"><div class="card-title">盈利预测</div><div class="chart-placeholder"><div style="text-align:center;"><div style="font-size:40px;margin-bottom:8px;">📊</div><div>机构盈利预测 vs 实际值</div><div style="color:#ccc;margin-top:4px;">EPS / 净利润增长率</div></div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">研报观点汇总 <span class="badge" style="background:#fff7e6;color:#d46b08;">12 份研报</span></div>
+      <div style="margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px;">机构评级分布</div>
+        <div class="bb-bar"><div class="bb-bull" style="width:67%;">买入 8家</div><div class="bb-neutral" style="width:25%;">中性 3家</div><div class="bb-bear" style="width:8%;">卖出 1家</div></div>
+        <div class="bb-label"><span style="color:#cf1322;">看多 67%</span><span style="color:#faad14;">中性 25%</span><span style="color:#3f8600;">看空 8%</span></div>
+      </div>
+      <div style="border-top:1px solid #f0f0f0;padding-top:16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">关键观点</div>
+        <div class="report-item"><div class="meta"><span>招商证券</span><span>2026-05-25</span><span class="type-tag tag-stock" style="background:#fff1f0;color:#cf1322;">买入</span></div><div class="title">招商银行2026年一季报点评：息差企稳，零售优势稳固</div><div class="summary">公司Q1营收同比增长5.2%，净息差环比企稳回升。零售贷款结构优化，不良率继续下降。维持买入评级，目标价45元。</div></div>
+        <div class="report-item"><div class="meta"><span>中金公司</span><span>2026-05-20</span><span class="type-tag tag-stock" style="background:#fff1f0;color:#cf1322;">买入</span></div><div class="title">财富管理转型加速，估值有望重塑</div><div class="summary">招行AUM突破15万亿，财富管理收入占比持续提升。看好长期转型空间，当前估值处于历史低位，具备配置价值。</div></div>
+        <div class="report-item"><div class="meta"><span>中信证券</span><span>2026-05-18</span><span class="type-tag tag-stock" style="background:#fffbe6;color:#d46b08;">中性</span></div><div class="title">息差压力仍在，关注资产质量边际变化</div><div class="summary">行业整体面临息差收窄压力，招行虽表现优于同业，但短期缺乏催化。建议观望等待更明确的企稳信号。</div></div>
+      </div>
+    </div>
+
+    <!-- AI Investment Analysis -->
+    <div class="card" style="border:2px solid #1677ff;background:linear-gradient(135deg,#f0f7ff 0%,#ffffff 100%);">
+      <div class="card-title" style="font-size:18px;">
+        <span style="background:#1677ff;color:#fff;padding:4px 10px;border-radius:6px;font-size:13px;margin-right:4px;">AI</span>
+        AI 投资建议
+        <span style="font-size:12px;color:#999;font-weight:normal;margin-left:auto;">基于 12 份研报 + 财务数据综合分析 · 2026-05-27 更新</span>
+      </div>
+
+      <!-- Verdict -->
+      <div style="display:flex;align-items:center;gap:20px;padding:20px;background:#fff;border-radius:8px;margin-bottom:20px;border:1px solid #e6f4ff;">
+        <div style="text-align:center;min-width:120px;">
+          <div style="font-size:36px;font-weight:800;color:#1677ff;">建议买入</div>
+          <div style="font-size:12px;color:#999;margin-top:4px;">综合评分 78/100</div>
+          <div style="margin-top:8px;background:#e6f4ff;border-radius:4px;padding:4px 12px;display:inline-block;">
+            <span style="font-size:12px;color:#1677ff;font-weight:600;">分批建仓</span>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;gap:24px;margin-bottom:12px;">
+            <div style="font-size:13px;"><span style="color:#999;">目标价：</span><span style="font-weight:600;color:#cf1322;">45.00 元</span></div>
+            <div style="font-size:13px;"><span style="color:#999;">当前价：</span><span style="font-weight:600;">38.52 元</span></div>
+            <div style="font-size:13px;"><span style="color:#999;">上涨空间：</span><span style="font-weight:600;color:#cf1322;">+16.8%</span></div>
+            <div style="font-size:13px;"><span style="color:#999;">建议仓位：</span><span style="font-weight:600;">20-30%</span></div>
+          </div>
+          <div style="background:#f6ffed;border-radius:6px;padding:10px 14px;font-size:13px;color:#389e0d;line-height:1.8;">
+            <strong>操作建议：</strong>当前估值处于近5年 15% 分位，安全边际较高。建议先建立观察仓（10%），待 Q2 财报确认息差企稳趋势后分两次加仓至 20-30%。若股价回落至 35 元以下可加大仓位。止损位设 34 元（跌破则止损）。
+          </div>
+        </div>
+      </div>
+
+      <!-- Scoring Breakdown -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">评分维度</div>
+        <div class="grid-4">
+          <div style="text-align:center;padding:12px;background:#fff;border-radius:6px;border:1px solid #f0f0f0;">
+            <div style="font-size:22px;font-weight:700;color:#1677ff;">82</div>
+            <div style="font-size:12px;color:#999;margin:4px 0;">估值吸引力</div>
+            <div style="height:4px;background:#f0f0f0;border-radius:2px;margin-top:6px;"><div style="height:100%;width:82%;background:#1677ff;border-radius:2px;"></div></div>
+          </div>
+          <div style="text-align:center;padding:12px;background:#fff;border-radius:6px;border:1px solid #f0f0f0;">
+            <div style="font-size:22px;font-weight:700;color:#52c41a;">75</div>
+            <div style="font-size:12px;color:#999;margin:4px 0;">基本面质量</div>
+            <div style="height:4px;background:#f0f0f0;border-radius:2px;margin-top:6px;"><div style="height:100%;width:75%;background:#52c41a;border-radius:2px;"></div></div>
+          </div>
+          <div style="text-align:center;padding:12px;background:#fff;border-radius:6px;border:1px solid #f0f0f0;">
+            <div style="font-size:22px;font-weight:700;color:#faad14;">70</div>
+            <div style="font-size:12px;color:#999;margin:4px 0;">行业景气度</div>
+            <div style="height:4px;background:#f0f0f0;border-radius:2px;margin-top:6px;"><div style="height:100%;width:70%;background:#faad14;border-radius:2px;"></div></div>
+          </div>
+          <div style="text-align:center;padding:12px;background:#fff;border-radius:6px;border:1px solid #f0f0f0;">
+            <div style="font-size:22px;font-weight:700;color:#722ed1;">85</div>
+            <div style="font-size:12px;color:#999;margin:4px 0;">机构共识度</div>
+            <div style="height:4px;background:#f0f0f0;border-radius:2px;margin-top:6px;"><div style="height:100%;width:85%;background:#722ed1;border-radius:2px;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analysis Details -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">核心分析逻辑</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:12px;background:#fff;border-radius:6px;border-left:3px solid #52c41a;font-size:13px;line-height:1.8;">
+            <div style="font-weight:600;margin-bottom:4px;color:#389e0d;">看多因素</div>
+            <div>· PE 5.82 处于历史 15% 分位，估值极具吸引力</div>
+            <div>· ROE 14.26% 持续领先同业，护城河稳固</div>
+            <div>· 财富管理转型加速，AUM 突破 15 万亿</div>
+            <div>· 8/12 家机构给出买入评级，共识度强</div>
+          </div>
+          <div style="padding:12px;background:#fff;border-radius:6px;border-left:3px solid #faad14;font-size:13px;line-height:1.8;">
+            <div style="font-weight:600;margin-bottom:4px;color:#d46b08;">风险提示</div>
+            <div>· LPR 下行周期中息差仍面临收窄压力</div>
+            <div>· 房地产风险敞口需持续关注资产质量</div>
+            <div>· 银行板块整体缺乏短期催化，需耐心等待</div>
+            <div>· 中性/看空机构指出观望信号未完全确认</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disclaimer -->
+      <div style="font-size:11px;color:#bbb;text-align:center;padding-top:8px;border-top:1px solid #f0f0f0;">
+        以上分析由 AI 基于公开研报和财务数据生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。
+      </div>
+    </div>
+
+  </div>
+  <div class="footer">A 股长期投资看板 2026 · 原型演示</div>
+</div>
+
+<!-- INDUSTRY DETAIL -->
+<div class="page" id="page-industry">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <span style="cursor:pointer;color:#1677ff;font-size:14px;" onclick="showPage('home')">首页</span>
+      <span style="color:#ccc">/</span>
+      <span style="font-size:14px;color:#999;">行业详情</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px;">
+      <h2 style="font-size:24px;">机器人</h2>
+      <span style="background:#f6ffed;color:#52c41a;padding:2px 8px;border-radius:4px;font-size:12px;">高端装备</span>
+    </div>
+    <p style="color:#999;font-size:13px;margin-bottom:24px;">涵盖工业机器人、人形机器人、核心零部件等领域</p>
+
+    <div class="card">
+      <div class="card-title">产业链图谱 <span class="badge" style="background:#e6f4ff;color:#1677ff;">可点击跳转</span></div>
+      <div class="chain">
+        <div class="chain-node" onclick="showPage('industry')"><div class="label">上游</div><div class="name">稀土永磁</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node" onclick="showPage('industry')"><div class="label">上游</div><div class="name">减速器</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node" onclick="showPage('industry')"><div class="label">上游</div><div class="name">伺服电机</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node current"><div class="label">当前</div><div class="name">机器人</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node" onclick="showPage('industry')"><div class="label">下游</div><div class="name">汽车制造</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node" onclick="showPage('industry')"><div class="label">下游</div><div class="name">3C电子</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node" onclick="showPage('industry')"><div class="label">下游</div><div class="name">仓储物流</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">细分领域分析</div>
+      <div class="grid-3">
+        <div class="sub-sector-card"><h4>工业机器人</h4><p>2025年中国工业机器人销量突破30万台，同比增长15%。国产替代加速，国产化率突破45%。汽车、新能源为最大应用领域。</p><div class="players"><span class="player-tag">埃斯顿</span><span class="player-tag">汇川技术</span><span class="player-tag">新松机器人</span></div></div>
+        <div class="sub-sector-card"><h4>人形机器人</h4><p>2026年进入量产元年，特斯拉Optimus V3量产在即。国内宇树科技、智元机器人等加速IPO进程。产业链配套逐步成熟。</p><div class="players"><span class="player-tag">三花智控</span><span class="player-tag">拓普集团</span><span class="player-tag">北特科技</span><span class="player-tag">恒立液压</span></div></div>
+        <div class="sub-sector-card"><h4>核心零部件</h4><p>减速器、伺服电机、控制器三大核心部件占机器人成本70%。国产谐波减速器已实现突破，RV减速器国产化率持续提升。</p><div class="players"><span class="player-tag">绿的谐波</span><span class="player-tag">双环传动</span><span class="player-tag">鸣志电器</span></div></div>
+      </div>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:24px;">
+      <div class="card">
+        <div class="card-title">成本结构</div>
+        <div class="pie-chart" style="background: conic-gradient(#1677ff 0% 35%, #52c41a 35% 55%, #faad14 55% 75%, #722ed1 75% 90%, #999 90% 100%);"></div>
+        <div class="pie-legend">
+          <div class="pie-legend-item"><div class="pie-legend-dot" style="background:#1677ff"></div>核心零部件 35%</div>
+          <div class="pie-legend-item"><div class="pie-legend-dot" style="background:#52c41a"></div>原材料 20%</div>
+          <div class="pie-legend-item"><div class="pie-legend-dot" style="background:#faad14"></div>人工 20%</div>
+          <div class="pie-legend-item"><div class="pie-legend-dot" style="background:#722ed1"></div>研发 15%</div>
+          <div class="pie-legend-item"><div class="pie-legend-dot" style="background:#999"></div>其他 10%</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">技术替代风险</div>
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:48px;font-weight:700;color:#faad14;margin-bottom:4px;">中等</div>
+          <div style="color:#999;font-size:13px;margin-bottom:16px;">替代周期：5-8年</div>
+          <div style="text-align:left;font-size:13px;color:#666;line-height:1.8;">
+            <div>· AI+具身智能可能颠覆传统工业机器人范式</div>
+            <div>· 协作机器人正在替代部分传统工业机器人场景</div>
+            <div>· 国产替代加速，但高端领域仍依赖进口</div>
+            <div>· 软件定义机器人趋势明显，算法壁垒提升</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">产品价格趋势</div>
+        <div class="chart-placeholder" style="height:220px;"><div style="text-align:center;"><div style="font-size:36px;margin-bottom:8px;">📉</div><div>工业机器人均价走势</div><div style="color:#ccc;margin-top:4px;">国产化推动价格持续下降</div></div></div>
+        <div style="text-align:center;margin-top:8px;font-size:13px;color:#666;">当前均价：约 12.8 万元/台 <span style="color:#3f8600;">↓ 8.5% YoY</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">🏆 行业龙头股 <span style="font-size:13px;color:#999;font-weight:normal;">机构持仓 Top 3</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        <div style="background:linear-gradient(135deg,#fff7e6,#fff);border:1px solid #ffd591;border-radius:8px;padding:16px;text-align:center;position:relative;">
+          <div style="position:absolute;top:8px;left:12px;font-size:18px;">🥇</div>
+          <div style="font-size:15px;font-weight:600;margin-top:8px;" class="clickable" onclick="showPage('stock')">汇川技术</div>
+          <div style="font-size:12px;color:#999;">300124</div>
+          <div style="margin:10px 0;font-size:28px;font-weight:700;color:#cf1322;">38.5%</div>
+          <div style="font-size:12px;color:#666;">机构持仓占比</div>
+          <div style="display:flex;justify-content:space-around;margin-top:12px;font-size:12px;">
+            <div><div style="color:#999;">市值</div><div style="font-weight:600;">2,850亿</div></div>
+            <div><div style="color:#999;">ROE</div><div style="font-weight:600;color:#3f8600;">21.3%</div></div>
+            <div><div style="color:#999;">评级</div><div style="font-weight:600;">买入(12)</div></div>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,#f6ffed,#fff);border:1px solid #b7eb8f;border-radius:8px;padding:16px;text-align:center;position:relative;">
+          <div style="position:absolute;top:8px;left:12px;font-size:18px;">🥈</div>
+          <div style="font-size:15px;font-weight:600;margin-top:8px;" class="clickable" onclick="showPage('stock')">三花智控</div>
+          <div style="font-size:12px;color:#999;">002050</div>
+          <div style="margin:10px 0;font-size:28px;font-weight:700;color:#cf1322;">32.1%</div>
+          <div style="font-size:12px;color:#666;">机构持仓占比</div>
+          <div style="display:flex;justify-content:space-around;margin-top:12px;font-size:12px;">
+            <div><div style="color:#999;">市值</div><div style="font-weight:600;">1,120亿</div></div>
+            <div><div style="color:#999;">ROE</div><div style="font-weight:600;color:#3f8600;">18.7%</div></div>
+            <div><div style="color:#999;">评级</div><div style="font-weight:600;">买入(10)</div></div>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,#e6f7ff,#fff);border:1px solid #91d5ff;border-radius:8px;padding:16px;text-align:center;position:relative;">
+          <div style="position:absolute;top:8px;left:12px;font-size:18px;">🥉</div>
+          <div style="font-size:15px;font-weight:600;margin-top:8px;" class="clickable" onclick="showPage('stock')">拓普集团</div>
+          <div style="font-size:12px;color:#999;">601689</div>
+          <div style="margin:10px 0;font-size:28px;font-weight:700;color:#cf1322;">28.7%</div>
+          <div style="font-size:12px;color:#666;">机构持仓占比</div>
+          <div style="display:flex;justify-content:space-around;margin-top:12px;font-size:12px;">
+            <div><div style="color:#999;">市值</div><div style="font-weight:600;">890亿</div></div>
+            <div><div style="color:#999;">ROE</div><div style="font-weight:600;color:#3f8600;">15.3%</div></div>
+            <div><div style="color:#999;">评级</div><div style="font-weight:600;">买入(8)</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">行业内个股对比</div>
+      <table class="table">
+        <thead><tr><th>股票</th><th>市值(亿)</th><th>PE</th><th>ROE</th><th>营收增速</th><th>净利增速</th><th>机构评级</th></tr></thead>
+        <tbody>
+          <tr><td class="clickable" onclick="showPage('stock')">埃斯顿 002747</td><td>328</td><td>65.2</td><td>8.5%</td><td class="metric-up">+22.3%</td><td class="metric-up">+18.7%</td><td>买入(6) 中性(2)</td></tr>
+          <tr><td class="clickable" onclick="showPage('stock')">汇川技术 300124</td><td>2,850</td><td>42.1</td><td>21.3%</td><td class="metric-up">+18.5%</td><td class="metric-up">+25.2%</td><td>买入(12)</td></tr>
+          <tr><td class="clickable" onclick="showPage('stock')">绿的谐波 688017</td><td>156</td><td>78.5</td><td>6.2%</td><td class="metric-up">+35.8%</td><td class="metric-up">+42.1%</td><td>买入(5) 中性(3)</td></tr>
+          <tr><td class="clickable" onclick="showPage('stock')">三花智控 002050</td><td>1,120</td><td>28.6</td><td>18.7%</td><td class="metric-up">+15.2%</td><td class="metric-up">+20.8%</td><td>买入(10)</td></tr>
+          <tr><td class="clickable" onclick="showPage('stock')">拓普集团 601689</td><td>890</td><td>35.4</td><td>15.3%</td><td class="metric-up">+28.6%</td><td class="metric-up">+32.5%</td><td>买入(8) 中性(1)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">研报观点汇总 <span class="badge" style="background:#fff7e6;color:#d46b08;">28 份研报</span></div>
+      <div style="margin-bottom:20px;">
+        <div class="bb-bar"><div class="bb-bull" style="width:75%;">看多 21家</div><div class="bb-neutral" style="width:18%;">中性 5家</div><div class="bb-bear" style="width:7%;">看空 2家</div></div>
+        <div class="bb-label"><span style="color:#cf1322;">看多 75%</span><span style="color:#faad14;">中性 18%</span><span style="color:#3f8600;">看空 7%</span></div>
+      </div>
+      <div style="border-top:1px solid #f0f0f0;padding-top:16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">最新研报</div>
+        <div class="report-item"><div class="meta"><span>中泰证券</span><span>2026-05-27</span></div><div class="title">机器人产业链产能建设的五维验证：观其行，知其实</div><div class="summary">产能建设是最难伪装的战略信号。产业链从"讲故事"迈向"兑现"，产能建设是检验公司决心的"试金石"。</div></div>
+        <div class="report-item"><div class="meta"><span>招商证券</span><span>2026-05-26</span><span class="type-tag tag-stock" style="background:#fff1f0;color:#cf1322;">推荐</span></div><div class="title">机器人行业2025年报及2026一季报综述</div><div class="summary">通用自动化景气度回暖，具身智能产业化不断推进。建议关注特斯拉核心供应链及国产核心供应链。</div></div>
+        <div class="report-item"><div class="meta"><span>华源证券</span><span>2026-05-26</span><span class="type-tag tag-stock" style="background:#fff1f0;color:#cf1322;">看好</span></div><div class="title">人形机器人产业周报：云深处、乐聚智能IPO获受理</div><div class="summary">机器人本体厂商资本化进程加速，2026年或有望成为主机厂IPO元年。</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title">💼 相关基金 <span style="font-size:13px;color:#999;font-weight:normal;">机器人及高端装备主题</span></div>
+      <table class="table">
+        <thead><tr><th>基金名称</th><th>代码</th><th>类型</th><th>规模(亿)</th><th>近1月</th><th>近3月</th><th>近1年</th><th>重仓行业占比</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="clickable" onclick="showPage('fund')" style="color:#1677ff;font-weight:500;">华夏中证机器人ETF</td>
+            <td>562500</td><td>ETF</td><td>18.6</td>
+            <td class="metric-up">+5.2%</td><td class="metric-up">+12.8%</td><td class="metric-up">+28.5%</td>
+            <td>95.2%</td>
+          </tr>
+          <tr>
+            <td class="clickable" onclick="showPage('fund')" style="color:#1677ff;font-weight:500;">国泰中证机器人ETF</td>
+            <td>159551</td><td>ETF</td><td>12.3</td>
+            <td class="metric-up">+4.8%</td><td class="metric-up">+11.5%</td><td class="metric-up">+25.1%</td>
+            <td>94.8%</td>
+          </tr>
+          <tr>
+            <td class="clickable" onclick="showPage('fund')" style="color:#1677ff;font-weight:500;">银华中小盘精选混合</td>
+            <td>180031</td><td>混合</td><td>32.1</td>
+            <td class="metric-up">+3.6%</td><td class="metric-up">+9.2%</td><td class="metric-up">+18.7%</td>
+            <td>42.5%</td>
+          </tr>
+          <tr>
+            <td class="clickable" onclick="showPage('fund')" style="color:#1677ff;font-weight:500;">富国高端制造股票</td>
+            <td>005825</td><td>股票</td><td>8.9</td>
+            <td class="metric-up">+6.1%</td><td class="metric-up">+15.3%</td><td class="metric-up">+32.4%</td>
+            <td>58.3%</td>
+          </tr>
+          <tr>
+            <td class="clickable" onclick="showPage('fund')" style="color:#1677ff;font-weight:500;">广发制造业精选混合</td>
+            <td>002436</td><td>混合</td><td>15.7</td>
+            <td class="metric-up">+2.9%</td><td class="metric-up">+8.1%</td><td class="metric-up">+15.3%</td>
+            <td>36.8%</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;font-size:12px;color:#999;">数据来源：基金季报披露 · 仅供参考，不构成投资建议</div>
+    </div>
+  </div>
+  <div class="footer">A 股长期投资看板 2026 · 原型演示</div>
+</div>
+
+<!-- FUND DETAIL -->
+<div class="page" id="page-fund">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div style="margin-bottom:16px;">
+      <span style="color:#1677ff;cursor:pointer;font-size:13px;" onclick="showPage('industry')">← 返回行业详情</span>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h2 style="font-size:22px;margin-bottom:4px;">华夏中证机器人ETF</h2>
+          <div style="color:#999;font-size:13px;">562500 · ETF · 成立于 2021-06-09</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:28px;font-weight:700;color:#cf1322;">1.2850</div>
+          <div style="font-size:13px;color:#cf1322;">+0.0320 (+2.55%)</div>
+          <div style="font-size:12px;color:#999;">2026-05-27 收盘</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0;">
+        <div style="text-align:center;"><div style="font-size:12px;color:#999;margin-bottom:4px;">基金规模</div><div style="font-size:18px;font-weight:600;">18.6亿</div></div>
+        <div style="text-align:center;"><div style="font-size:12px;color:#999;margin-bottom:4px;">近1月</div><div style="font-size:18px;font-weight:600;color:#cf1322;">+5.2%</div></div>
+        <div style="text-align:center;"><div style="font-size:12px;color:#999;margin-bottom:4px;">近3月</div><div style="font-size:18px;font-weight:600;color:#cf1322;">+12.8%</div></div>
+        <div style="text-align:center;"><div style="font-size:12px;color:#999;margin-bottom:4px;">近1年</div><div style="font-size:18px;font-weight:600;color:#cf1322;">+28.5%</div></div>
+        <div style="text-align:center;"><div style="font-size:12px;color:#999;margin-bottom:4px;">跟踪指数</div><div style="font-size:14px;font-weight:600;">中证机器人</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">净值走势</div>
+        <div class="chart-placeholder" style="height:200px;"><div style="text-align:center;"><div style="font-size:36px;margin-bottom:8px;">📈</div><div>近1年净值走势</div><div style="color:#ccc;margin-top:4px;">1.00 → 1.285 (+28.5%)</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">基金基本信息</div>
+        <table class="table">
+          <tbody>
+            <tr><td style="color:#999;width:40%;">基金经理</td><td style="font-weight:500;">赵宇</td></tr>
+            <tr><td style="color:#999;">基金公司</td><td style="font-weight:500;">华夏基金</td></tr>
+            <tr><td style="color:#999;">管理费率</td><td>0.50%</td></tr>
+            <tr><td style="color:#999;">托管费率</td><td>0.10%</td></tr>
+            <tr><td style="color:#999;">跟踪误差</td><td>0.08%</td></tr>
+            <tr><td style="color:#999;">份额规模</td><td>14.5亿份</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">十大重仓股 <span style="font-size:13px;color:#999;font-weight:normal;">2026年一季报</span></div>
+      <table class="table">
+        <thead><tr><th>排名</th><th>股票</th><th>持仓占比</th><th>较上期</th><th>市值(万)</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="clickable" onclick="showPage('stock')">汇川技术 300124</td><td>12.5%</td><td style="color:#3f8600;">↑ 1.2%</td><td>23,250</td></tr>
+          <tr><td>2</td><td class="clickable" onclick="showPage('stock')">埃斯顿 002747</td><td>8.8%</td><td style="color:#3f8600;">↑ 0.5%</td><td>16,368</td></tr>
+          <tr><td>3</td><td class="clickable" onclick="showPage('stock')">绿的谐波 688017</td><td>7.2%</td><td>—</td><td>13,392</td></tr>
+          <tr><td>4</td><td class="clickable" onclick="showPage('stock')">三花智控 002050</td><td>6.5%</td><td style="color:#cf1322;">↓ 0.3%</td><td>12,090</td></tr>
+          <tr><td>5</td><td class="clickable" onclick="showPage('stock')">拓普集团 601689</td><td>5.8%</td><td style="color:#3f8600;">↑ 0.8%</td><td>10,788</td></tr>
+          <tr><td>6</td><td>双环传动 002472</td><td>4.5%</td><td>—</td><td>8,370</td></tr>
+          <tr><td>7</td><td>鸣志电器 603728</td><td>4.2%</td><td style="color:#3f8600;">↑ 新进</td><td>7,812</td></tr>
+          <tr><td>8</td><td>步科股份 688160</td><td>3.8%</td><td style="color:#cf1322;">↓ 0.6%</td><td>7,068</td></tr>
+          <tr><td>9</td><td>禾川科技 688320</td><td>3.5%</td><td>—</td><td>6,510</td></tr>
+          <tr><td>10</td><td>信捷电气 603416</td><td>3.2%</td><td style="color:#3f8600;">↑ 0.2%</td><td>5,952</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:8px;font-size:12px;color:#999;">前十大重仓股合计占比 60.0% · 数据来源：基金季报</div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border:1px solid #e6f4ff;background:linear-gradient(135deg,#f0f5ff,#fff);">
+      <div class="card-title">🤖 AI 投资建议 <span style="font-size:12px;color:#999;font-weight:normal;">由 DeepSeek 大模型基于公开数据分析生成</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#1677ff;margin-bottom:8px;">综合评分</div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#52c41a,#73d13d);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;">82</div>
+            <div style="font-size:13px;line-height:1.8;">
+              <div>跟踪精度：<span style="color:#52c41a;font-weight:600;">优秀</span></div>
+              <div>流动性：<span style="color:#52c41a;font-weight:600;">良好</span></div>
+              <div>费用水平：<span style="color:#faad14;font-weight:600;">中等</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#1677ff;margin-bottom:8px;">定投建议</div>
+          <div style="font-size:24px;font-weight:700;color:#52c41a;margin-bottom:4px;">推荐定投</div>
+          <div style="font-size:13px;color:#666;line-height:1.6;">机器人赛道长期成长确定性高，当前估值处于历史中位数，适合分批建仓或月度定投。</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #e6f4ff;padding-top:16px;">
+        <div style="font-size:13px;font-weight:600;color:#1677ff;margin-bottom:10px;">分析要点</div>
+        <div style="font-size:13px;line-height:2;color:#444;">
+          <div>✅ <b>赛道前景：</b>人形机器人从0到1突破期，政策密集催化，产业链国产替代空间大</div>
+          <div>✅ <b>指数质量：</b>中证机器人指数成分股覆盖核心零部件、本体、集成全链条，代表性强</div>
+          <div>⚠️ <b>波动风险：</b>行业仍处早期，主题性波动较大，建议控制仓位不超过组合的15%</div>
+          <div>⚠️ <b>估值水平：</b>当前PE(TTM) 42x，处于近3年65%分位，短期不便宜但长期可接受</div>
+          <div>💡 <b>操作建议：</b>采用"核心+卫星"策略，本基金作为卫星仓位，配合宽基指数ETF构建组合</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;font-size:11px;color:#999;border-top:1px solid #e6f4ff;padding-top:12px;">
+        ⚠️ 以上内容由AI模型基于公开数据分析生成，仅供参考，不构成任何投资建议。投资有风险，入市需谨慎。
+      </div>
+    </div>
+
+    <div style="margin-top:16px;text-align:center;font-size:12px;color:#999;padding:16px;">
+      以上数据仅供参考，不构成任何投资建议。基金过往业绩不代表未来表现。
+    </div>
+  </div>
+  <div class="footer">A 股长期投资看板 2026 · 原型演示</div>
+</div>
+
+<!-- WATCHLIST -->
+<div class="page" id="page-watchlist">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h2>关注列表</h2>
+      <button style="padding:8px 20px;background:#1677ff;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">+ 添加关注</button>
+    </div>
+    <div class="tabs">
+      <div class="tab active">全部 (6)</div>
+      <div class="tab">个股 (4)</div>
+      <div class="tab">行业 (2)</div>
+    </div>
+    <div class="grid-2">
+      <div class="watch-card" onclick="showPage('stock')"><div class="left"><div class="icon" style="background:#e6f4ff;color:#1677ff;">招</div><div class="info"><h3>招商银行 <span style="color:#999;font-weight:normal;font-size:12px;">600036</span></h3><p>PE 5.82 · ROE 14.26% · 12份研报</p></div></div><div class="right"><div class="time">3小时前更新</div><button class="btn-refresh">刷新</button></div></div>
+      <div class="watch-card" onclick="showPage('industry')"><div class="left"><div class="icon" style="background:#f6ffed;color:#52c41a;">机</div><div class="info"><h3>机器人 <span style="color:#999;font-weight:normal;font-size:12px;">高端装备</span></h3><p>看多75% · 28份研报 · 5只成分股</p></div></div><div class="right"><div class="time">1天前更新</div><button class="btn-refresh">刷新</button></div></div>
+      <div class="watch-card" onclick="showPage('stock')"><div class="left"><div class="icon" style="background:#fff7e6;color:#fa8c16;">芯</div><div class="info"><h3>中芯国际 <span style="color:#999;font-weight:normal;font-size:12px;">688981</span></h3><p>PE 45.3 · ROE 9.8% · 8份研报</p></div></div><div class="right"><div class="time">2天前更新</div><button class="btn-refresh">刷新</button></div></div>
+      <div class="watch-card" onclick="showPage('stock')"><div class="left"><div class="icon" style="background:#f9f0ff;color:#722ed1;">宁</div><div class="info"><h3>宁德时代 <span style="color:#999;font-weight:normal;font-size:12px;">300750</span></h3><p>PE 22.1 · ROE 18.5% · 15份研报</p></div></div><div class="right"><div class="time">2天前更新</div><button class="btn-refresh">刷新</button></div></div>
+      <div class="watch-card" onclick="showPage('industry')"><div class="left"><div class="icon" style="background:#f6ffed;color:#52c41a;">新</div><div class="info"><h3>新能源 <span style="color:#999;font-weight:normal;font-size:12px;">电力设备</span></h3><p>看多60% · 22份研报 · 8只成分股</p></div></div><div class="right"><div class="time">3天前更新</div><button class="btn-refresh">刷新</button></div></div>
+      <div class="watch-card" onclick="showPage('stock')"><div class="left"><div class="icon" style="background:#e6f4ff;color:#1677ff;">五</div><div class="info"><h3>五粮液 <span style="color:#999;font-weight:normal;font-size:12px;">000858</span></h3><p>PE 18.5 · ROE 22.3% · 10份研报</p></div></div><div class="right"><div class="time">5天前更新</div><button class="btn-refresh">刷新</button></div></div>
+    </div>
+  </div>
+  <div class="footer">A 股长期投资看板 2026 · 原型演示</div>
+</div>
+
+</div>
+
+<script>
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.header-nav a').forEach(function(a) { a.classList.remove('active'); });
+  var navMap = { home: 0, watchlist: 1, fund: null };
+  if (navMap[page] !== undefined) {
+    document.querySelectorAll('.header-nav a')[navMap[page]].classList.add('active');
+  }
+  window.scrollTo(0, 0);
+}
+function handleSearch(val) {
+  var drop = document.getElementById('search-drop');
+  if (val.trim()) { drop.classList.add('show'); } else { drop.classList.remove('show'); }
+}
+</script>
+</body>
+</html>

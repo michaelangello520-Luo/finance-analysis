@@ -30,3 +30,4 @@ node_modules/
 *.xlsx
 *.xls
 data/raw/
+data/*.db
