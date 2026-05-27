@@ -86,7 +86,9 @@ async def _get_stock_data(db: AsyncSession, stock_code: str) -> dict:
     from sqlalchemy.orm import selectinload
 
     result = await db.execute(
-        select(Stock).options(selectinload(Stock.financial_data)).where(Stock.code == stock_code)
+        select(Stock)
+        .options(selectinload(Stock.financial_data), selectinload(Stock.industry))
+        .where(Stock.code == stock_code)
     )
     stock = result.scalar_one_or_none()
     if not stock:
@@ -100,16 +102,24 @@ async def _get_stock_data(db: AsyncSession, stock_code: str) -> dict:
     )
     reports = report_result.scalars().all()
 
-    stock_info = f"代码: {stock.code}, 名称: {stock.name}, 行业: {stock.industry or '未知'}"
+    industry_name = "未知"
+    if stock.industry:
+        industry_name = stock.industry.name
+    stock_info = f"代码: {stock.code}, 名称: {stock.name}, 行业: {industry_name}"
 
     financial_data = "暂无财务数据"
     if stock.financial_data:
         fd = stock.financial_data[0]
-        financial_data = f"营收: {fd.revenue}亿, 净利润: {fd.net_profit}亿, ROE: {fd.roe}%, PE: {fd.pe}, PB: {fd.pb}"
+        financial_data = (
+            f"营收: {fd.revenue or 'N/A'}亿, 净利润: {fd.net_profit or 'N/A'}亿, "
+            f"ROE: {fd.roe or 'N/A'}%, 毛利率: {fd.gross_margin or 'N/A'}%, "
+            f"净利率: {fd.net_margin or 'N/A'}%, EPS: {fd.eps or 'N/A'}, "
+            f"PE: {fd.pe or 'N/A'}, PB: {fd.pb or 'N/A'}"
+        )
 
     reports_summary = ""
     for r in reports:
-        reports_summary += f"- [{r.date}] {r.title} ({r.institution or '未知机构'})\n"
+        reports_summary += f"- [{r.report_date or '未知'}] {r.title} ({r.institution or '未知机构'})\n"
     if not reports_summary:
         reports_summary = "暂无相关研报"
 

@@ -18,13 +18,28 @@ async def search_reports(query: str, page: int = 1, page_size: int = 10) -> list
         resp.raise_for_status()
         data = resp.json()
 
-    inner = data.get("data", {}).get("llmSearchResponse", {})
+    data_field = data.get("data")
+    if not data_field or not isinstance(data_field, dict):
+        return []
+
+    inner = data_field.get("llmSearchResponse", {})
     if isinstance(inner, str):
-        inner = json.loads(inner)
+        try:
+            inner = json.loads(inner)
+        except json.JSONDecodeError:
+            return []
+
+    if not isinstance(inner, dict):
+        return []
 
     items = inner.get("data", [])
+    if not isinstance(items, list):
+        return []
+
     results = []
     for item in items:
+        if not isinstance(item, dict):
+            continue
         results.append({
             "title": item.get("title", ""),
             "source": item.get("source", ""),
