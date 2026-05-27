@@ -3,6 +3,7 @@ from app.models.industry import Industry, IndustryRelation, StockIndustry
 from app.models.financial_data import FinancialData
 from app.models.research_report import ResearchReport
 from app.models.watchlist import Watchlist
+from app.models.settings import Setting
 
 __all__ = [
     "Stock",
@@ -12,4 +13,5 @@ __all__ = [
     "FinancialData",
     "ResearchReport",
     "Watchlist",
+    "Setting",
 ]

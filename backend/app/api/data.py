@@ -36,7 +36,10 @@ async def collect_industry_data(
     stocks = await fetch_industry_stocks(db, industry)
     reports = await fetch_and_save_reports(db, name, target_type="industry", industry_id=industry.id)
     await db.commit()
-    return {"message": f"已采集行业 {name} 数据，{len(stocks)} 只成分股，{len(reports)} 份研报"}
+    return {
+        "message": f"已采集行业 {name} 数据，{len(stocks)} 只成分股，{len(reports)} 份研报",
+        "id": industry.id,
+    }
 
 
 @router.post("/report")

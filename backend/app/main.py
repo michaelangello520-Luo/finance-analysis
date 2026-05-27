@@ -9,6 +9,8 @@ from app.api.search import router as search_router
 from app.api.data import router as data_router
 from app.api.stock import router as stock_router
 from app.api.industry import router as industry_router
+from app.api.settings_api import router as settings_router
+from app.api.ai import router as ai_router
 
 
 @asynccontextmanager
@@ -19,7 +21,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Finance Analysis API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Finance Analysis API", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +35,8 @@ app.include_router(search_router)
 app.include_router(data_router)
 app.include_router(stock_router)
 app.include_router(industry_router)
+app.include_router(settings_router)
+app.include_router(ai_router)
 
 
 @app.get("/")
