@@ -31,7 +31,7 @@ React前端 <-> FastAPI后端 <-> SQLite
                   |
           APScheduler 定时任务
                   |
-     数据采集模块(AKShare/Tushare) + LLM分析模块(国内大模型)
+     数据采集模块(东方财富妙想/AKShare) + LLM分析模块(国内大模型)
 ```
 
 ### 项目结构
@@ -52,7 +52,7 @@ finance-analysis/
 │   │   ├── models/          # 数据库模型
 │   │   ├── schemas/         # Pydantic 数据校验
 │   │   ├── services/        # 业务逻辑
-│   │   │   ├── collector/   # 数据采集（AKShare/Tushare）
+│   │   │   ├── collector/   # 数据采集（东方财富妙想/AKShare）
 │   │   │   ├── analyzer/    # LLM 研报分析
 │   │   │   └── scheduler/   # 定时任务
 │   │   └── main.py
@@ -75,7 +75,7 @@ finance-analysis/
 +-- collector 采集模块 ------------------+
 |  1. AKShare 获取行业成分股列表          |
 |  2. AKShare 获取各股财务数据(季报/年报) |
-|  3. AKShare/Tushare 获取研报数据       |
+|  3. 东方财富妙想 API 搜索研报全文       |
 |  4. 原始数据存入 SQLite                |
 +----------------------------------------+
        |
@@ -107,15 +107,27 @@ finance-analysis/
 
 | 数据源 | 职责 | 费用 |
 |--------|------|------|
-| AKShare（主） | 行情、财务数据、研报摘要/评级/盈利预测 | 免费 |
-| Tushare（辅） | 券商研报文本（需注册） | 免费额度够用 |
-| 后续付费接口 | 研报全文（产品化阶段接入） | 待定 |
+| 东方财富妙想 API（主） | 研报搜索与全文获取，支持自然语言查询 | 免费（有 API key） |
+| AKShare（辅） | 行情数据、财务数据、行业成分股、研报摘要/评级 | 免费 |
+| Tushare（备选） | 补充研报数据（需注册） | 免费额度够用 |
+| 后续付费接口 | 研报全文深度数据（产品化阶段接入） | 待定 |
 
-### AKShare 研报相关接口
+### 东方财富妙想 API（研报主数据源）
+
+- 端点：`POST https://ai-saas.eastmoney.com/proxy/b/mcp/tool/searchNews`
+- 认证：Header `em_api_key`
+- 查询方式：自然语言，如"机器人行业研报"
+- 返回字段：标题、日期、机构、评级、实体名称、研报全文内容
+- 优势：研报内容完整（非摘要）、券商覆盖广、实时性好（当天研报可获取）
+- API key 存储在 `.env` 中，不入 Git
+
+### AKShare（财务/行情数据源）
 
 - `stock_analyst_detail_em()` — 个股研报列表（标题、日期、评级、目标价）
 - `stock_profit_forecast_em()` — 盈利预测数据
 - `stock_rating_em()` — 机构评级数据
+- `stock_financial_analysis_indicator()` — 财务分析指标
+- `stock_board_industry_cons_em()` — 行业成分股
 
 ---
 
@@ -213,7 +225,7 @@ SQLite，7 张核心表：
 | ORM | SQLAlchemy 2.0 | 异步支持好，类型安全 |
 | 数据库 | SQLite + aiosqlite | 轻量异步访问 |
 | 定时任务 | APScheduler | 简单够用，后续可换 Celery |
-| 数据采集 | AKShare | 免费 A 股数据接口 |
+| 数据采集 | 东方财富妙想 API + AKShare | 妙想获取研报全文，AKShare 获取行情/财务数据 |
 | LLM | 国内大模型 API（先接 DeepSeek） | 性价比高，中文能力强 |
 | 部署 | 本地优先 + Docker 可部署架构 | 代码结构按可部署标准写 |
 
@@ -229,7 +241,7 @@ SQLite，7 张核心表：
 
 ### Phase 2 -- 数据采集
 - AKShare 接入：获取个股财务数据、行业成分股
-- 研报获取：AKShare/Tushare 获取研报数据
+- 东方财富妙想 API 接入：研报搜索与全文获取
 - 数据存入 SQLite
 
 ### Phase 3 -- AI 分析
