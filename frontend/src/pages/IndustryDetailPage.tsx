@@ -137,7 +137,7 @@ export default function IndustryDetailPage() {
             {industry.stocks.length > 0 ? (
               <Table dataSource={industry.stocks} columns={stockColumns} rowKey="id" size="small" pagination={{ pageSize: 10 }} />
             ) : (
-              <Empty description="暂无成分股" />
+              <Empty description="暂无成分股（网络环境可能影响数据获取）" />
             )}
           </Card>
         </Col>

@@ -47,7 +47,17 @@ export default function SearchBar() {
           type: 'industry',
           id: i.id,
         }));
-        setOptions([...stockOpts, ...industryOpts]);
+        const all = [...stockOpts, ...industryOpts];
+        if (all.length === 0 && query.trim().length >= 2) {
+          setOptions([{
+            value: '_hint',
+            label: <div style={{ color: '#999', padding: '4px 0' }}>未找到结果，请输入6位股票代码（如601689）自动采集</div>,
+            type: 'stock',
+            id: '',
+          }]);
+        } else {
+          setOptions(all);
+        }
       } catch {
         setOptions([]);
       }
