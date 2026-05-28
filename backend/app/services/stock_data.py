@@ -49,7 +49,7 @@ def _get_stock_name(code: str) -> str:
 
 
 def extract_name_from_reports(reports: list) -> str | None:
-    """Extract stock name from report titles. E.g. '长飞光纤涨0.60%' -> '长飞光纤'."""
+    """Extract stock name from report titles."""
     for r in reports:
         title = ""
         if isinstance(r, dict):
@@ -58,12 +58,16 @@ def extract_name_from_reports(reports: list) -> str | None:
             title = r.title or ""
         if not title:
             continue
-        # Match patterns like "长飞光纤涨" or "长飞光纤："
-        m = re.match(r"^([\u4e00-\u9fff]{2,6})([涨跌：:，,])", title)
+        # Pattern 1: "贵州茅台：累计回购" -> "贵州茅台"
+        m = re.match(r"^([\u4e00-\u9fff]{2,8})[：:]", title)
         if m:
             return m.group(1)
-        # Match "关于长飞光纤" or similar
-        m = re.search(r"([\u4e00-\u9fff]{2,6})(?:股份|集团|科技|光电)", title)
+        # Pattern 2: "XX股份/集团/科技" anywhere in title
+        m = re.search(r"([\u4e00-\u9fff]{2,6})(?:股份|集团|科技|光电|医药|银行|证券|保险|能源|汽车|电子)", title)
+        if m:
+            return m.group(1)
+        # Pattern 3: "关于XX" anywhere
+        m = re.search(r"关于([\u4e00-\u9fff]{2,6})", title)
         if m:
             return m.group(1)
     return None

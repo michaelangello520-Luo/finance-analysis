@@ -164,3 +164,27 @@ export async function checkWatchlist(targetType: string, targetId: number): Prom
   const { data } = await api.get<WatchlistCheck>('/watchlist/check', { params: { target_type: targetType, target_id: targetId } });
   return data;
 }
+
+export interface HotIndustry {
+  name: string;
+  change: number;
+  lead_stock: string;
+}
+
+export async function getHotIndustries(limit = 8): Promise<{ industries: HotIndustry[] }> {
+  const { data } = await api.get('/data/hot-industries', { params: { limit } });
+  return data;
+}
+
+export interface HotStock {
+  code: string;
+  name: string;
+  price: number;
+  change: number;
+  days_up?: number;
+}
+
+export async function getHotStocks(limit = 10): Promise<{ stocks: HotStock[] }> {
+  const { data } = await api.get('/data/hot-stocks', { params: { limit } });
+  return data;
+}

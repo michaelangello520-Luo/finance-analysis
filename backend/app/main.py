@@ -1,7 +1,21 @@
 import os
+import urllib3
 from contextlib import asynccontextmanager
 
+import requests
 from fastapi import FastAPI
+
+urllib3.disable_warnings()
+_original_get = requests.Session.get
+_original_post = requests.Session.post
+def _patched_get(self, *a, **kw):
+    kw.setdefault('verify', False)
+    return _original_get(self, *a, **kw)
+def _patched_post(self, *a, **kw):
+    kw.setdefault('verify', False)
+    return _original_post(self, *a, **kw)
+requests.Session.get = _patched_get
+requests.Session.post = _patched_post
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base

@@ -9,7 +9,8 @@ from app.models.industry import Industry
 from app.schemas.search import SearchResult
 from app.schemas.stock import StockListItem
 from app.schemas.industry import IndustryListItem
-from app.services.stock_data import fetch_and_save_stock
+from app.services.stock_data import fetch_and_save_stock, fetch_and_save_financials, extract_name_from_reports
+from app.services.research_report import fetch_and_save_reports
 
 router = APIRouter(prefix="/api", tags=["search"])
 
@@ -27,11 +28,18 @@ async def search(q: str = Query(default="", max_length=50), db: AsyncSession = D
     stock_result = await db.execute(stock_stmt)
     stocks = [StockListItem.model_validate(s) for s in stock_result.scalars().all()]
 
-    # If no DB results and query looks like a stock code (6 digits), auto-collect
+    # If no DB results and query looks like a stock code (6 digits), auto-collect full data
     if not stocks and re.match(r"^\d{6}$", q.strip()):
         try:
             stock = await fetch_and_save_stock(db, q.strip())
             if stock:
+                await fetch_and_save_financials(db, stock)
+                query = stock.name if stock.name != stock.code else stock.code
+                reports = await fetch_and_save_reports(db, query, target_type="stock", stock_id=stock.id)
+                if stock.name == stock.code and reports:
+                    name = extract_name_from_reports(reports)
+                    if name:
+                        stock.name = name
                 await db.commit()
                 stocks = [StockListItem.model_validate(stock)]
         except Exception:

@@ -30,7 +30,7 @@ export default function SearchBar() {
           label: (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>{s.name}</span>
-              <span style={{ color: '#999' }}>{s.code} · 个股</span>
+              <span style={{ color: '#999' }}>{s.code} · 股票</span>
             </div>
           ),
           type: 'stock',
@@ -51,7 +51,7 @@ export default function SearchBar() {
         if (all.length === 0 && query.trim().length >= 2) {
           setOptions([{
             value: '_hint',
-            label: <div style={{ color: '#999', padding: '4px 0' }}>未找到结果，请输入6位股票代码（如601689）自动采集</div>,
+            label: <div style={{ color: '#999', padding: '4px 0' }}>输入6位股票代码即可自动采集数据</div>,
             type: 'stock',
             id: '',
           }]);
@@ -81,9 +81,9 @@ export default function SearchBar() {
     >
       <Input.Search
         size="large"
-        placeholder="输入股票名称/代码 或 行业名称"
+        placeholder="输入股票代码采集数据（如 600519）或搜索行业"
         prefix={<SearchOutlined />}
-        enterButton="搜索"
+        enterButton="采集"
       />
     </AutoComplete>
   );

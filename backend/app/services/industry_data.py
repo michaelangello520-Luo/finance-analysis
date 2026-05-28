@@ -1,9 +1,18 @@
+import re
+
 import akshare as ak
+import requests
+from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.stock import Stock
 from app.models.industry import Industry, StockIndustry
+
+THS_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Referer": "https://q.10jqka.com.cn/",
+}
 
 
 async def fetch_and_save_industry(db: AsyncSession, name: str, sector: str = "") -> Industry | None:
@@ -18,45 +27,67 @@ async def fetch_and_save_industry(db: AsyncSession, name: str, sector: str = "")
     return industry
 
 
+def _find_ths_board_code(name: str, board_type: str = "concept") -> str | None:
+    """Find THS board code by name. board_type: 'concept' or 'industry'."""
+    try:
+        if board_type == "concept":
+            df = ak.stock_board_concept_name_ths()
+        else:
+            df = ak.stock_board_industry_name_ths()
+        matched = df[df["name"].str.contains(name, na=False)]
+        if matched.empty:
+            return None
+        return str(matched.iloc[0]["code"])
+    except Exception:
+        return None
+
+
+def _fetch_ths_board_stocks(board_code: str, board_type: str = "concept") -> list[dict]:
+    """Scrape constituent stocks from THS board page."""
+    try:
+        if board_type == "concept":
+            url = f"http://q.10jqka.com.cn/gn/detail/field/264648/order/desc/page/1/ajax/1/code/{board_code}"
+        else:
+            url = f"http://q.10jqka.com.cn/thshy/detail/field/264648/order/desc/page/1/ajax/1/code/{board_code}"
+
+        r = requests.get(url, headers=THS_HEADERS, timeout=15)
+        if r.status_code != 200:
+            return []
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        stocks = []
+        for row in soup.find_all("tr"):
+            tds = row.find_all("td")
+            if len(tds) >= 3:
+                code = tds[1].get_text(strip=True)
+                sname = tds[2].get_text(strip=True)
+                if re.match(r"^\d{6}$", code):
+                    stocks.append({"code": code, "name": sname})
+        return stocks
+    except Exception:
+        return []
+
+
 async def fetch_industry_stocks(db: AsyncSession, industry: Industry) -> list[Stock]:
-    """Fetch constituent stocks for an industry/board from AKShare."""
+    """Fetch constituent stocks using THS data source."""
     stocks = []
+    name = industry.name
 
-    # Try concept boards first, then industry boards
-    board_code = None
-    cons_df = None
-
+    # Try concept board first, then industry board
     for board_type in ["concept", "industry"]:
-        try:
-            if board_type == "concept":
-                df = ak.stock_board_concept_name_em()
-            else:
-                df = ak.stock_board_industry_name_em()
-
-            matched = df[df["板块名称"].str.contains(industry.name, na=False)]
-            if matched.empty:
-                continue
-
-            board_code = str(matched.iloc[0]["板块代码"])
-
-            if board_type == "concept":
-                cons_df = ak.stock_board_concept_cons_em(symbol=board_code)
-            else:
-                cons_df = ak.stock_board_industry_cons_em(symbol=board_code)
-
-            if cons_df is not None and not cons_df.empty:
-                break
-        except Exception:
+        board_code = _find_ths_board_code(name, board_type)
+        if not board_code:
             continue
 
-    if cons_df is None or cons_df.empty:
+        stock_list = _fetch_ths_board_stocks(board_code, board_type)
+        if stock_list:
+            break
+    else:
         return stocks
 
-    for _, row in cons_df.head(20).iterrows():
-        code = str(row.get("代码", ""))
-        sname = str(row.get("名称", ""))
-        if not code:
-            continue
+    for item in stock_list[:20]:
+        code = item["code"]
+        sname = item["name"]
 
         result = await db.execute(select(Stock).where(Stock.code == code))
         stock = result.scalars().first()
