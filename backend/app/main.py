@@ -11,6 +11,7 @@ from app.api.stock import router as stock_router
 from app.api.industry import router as industry_router
 from app.api.settings_api import router as settings_router
 from app.api.ai import router as ai_router
+from app.api.watchlist import router as watchlist_router
 
 
 @asynccontextmanager
@@ -25,7 +26,7 @@ app = FastAPI(title="Finance Analysis API", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +38,7 @@ app.include_router(stock_router)
 app.include_router(industry_router)
 app.include_router(settings_router)
 app.include_router(ai_router)
+app.include_router(watchlist_router)
 
 
 @app.get("/")

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { Typography, Card, Table, Button, Spin, Tag, message, Row, Col, Empty, Divider } from 'antd';
-import { ArrowLeftOutlined, RobotOutlined, FileTextOutlined } from '@ant-design/icons';
-import { getIndustryDetail, analyzeReport, collectIndustryData } from '../services/api';
+import { ArrowLeftOutlined, RobotOutlined, FileTextOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
+import { getIndustryDetail, analyzeReport, collectIndustryData, checkWatchlist, addToWatchlist, removeFromWatchlist } from '../services/api';
 import type { IndustryDetail as IndustryDetailType, StockBrief, ReportItem } from '../services/api';
 
 const { Title, Text } = Typography;
@@ -13,12 +13,15 @@ export default function IndustryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [collecting, setCollecting] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [watched, setWatched] = useState<{ watched: boolean; id: number | null }>({ watched: false, id: null });
 
   const fetchIndustry = async () => {
     if (!id) return;
     try {
       const data = await getIndustryDetail(Number(id));
       setIndustry(data);
+      const wc = await checkWatchlist('industry', data.id);
+      setWatched(wc);
     } catch {
       message.error('行业数据不存在');
     } finally {
@@ -27,6 +30,23 @@ export default function IndustryDetailPage() {
   };
 
   useEffect(() => { fetchIndustry(); }, [id]);
+
+  const handleToggleWatch = async () => {
+    if (!industry) return;
+    try {
+      if (watched.watched && watched.id) {
+        await removeFromWatchlist(watched.id);
+        setWatched({ watched: false, id: null });
+        message.success('已取消关注');
+      } else {
+        const res = await addToWatchlist('industry', industry.id);
+        setWatched({ watched: true, id: res.id });
+        message.success('已添加关注');
+      }
+    } catch {
+      message.error('操作失败');
+    }
+  };
 
   const handleCollect = async () => {
     if (!industry) return;
@@ -95,7 +115,16 @@ export default function IndustryDetailPage() {
                 <Title level={3} style={{ margin: 0 }}>{industry.name}</Title>
                 {industry.sector && <Tag color="blue" style={{ marginLeft: 8 }}>{industry.sector}</Tag>}
               </div>
-              <Button loading={collecting} onClick={handleCollect}>刷新数据</Button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  icon={watched.watched ? <StarFilled /> : <StarOutlined />}
+                  onClick={handleToggleWatch}
+                  style={{ color: watched.watched ? '#faad14' : undefined }}
+                >
+                  {watched.watched ? '已关注' : '关注'}
+                </Button>
+                <Button loading={collecting} onClick={handleCollect}>刷新数据</Button>
+              </div>
             </div>
             {industry.description && (
               <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>{industry.description}</Text>

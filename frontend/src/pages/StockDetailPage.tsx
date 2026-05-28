@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { Typography, Card, Table, Button, Spin, Tag, message, Row, Col, Empty, Divider } from 'antd';
-import { ArrowLeftOutlined, RobotOutlined, FileTextOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, RobotOutlined, FileTextOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
-import { getStockDetail, analyzeStock, analyzeReport, collectStockData, collectReports } from '../services/api';
+import { getStockDetail, analyzeStock, analyzeReport, collectStockData, collectReports, checkWatchlist, addToWatchlist, removeFromWatchlist } from '../services/api';
 import type { StockDetail as StockDetailType, ReportItem } from '../services/api';
 
 const { Title, Text, Paragraph } = Typography;
@@ -15,12 +15,15 @@ export default function StockDetailPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [collecting, setCollecting] = useState(false);
+  const [watched, setWatched] = useState<{ watched: boolean; id: number | null }>({ watched: false, id: null });
 
   const fetchStock = async () => {
     if (!code) return;
     try {
       const data = await getStockDetail(code);
       setStock(data);
+      const wc = await checkWatchlist('stock', data.id);
+      setWatched(wc);
     } catch {
       message.error('股票数据不存在，请先采集');
     } finally {
@@ -29,6 +32,23 @@ export default function StockDetailPage() {
   };
 
   useEffect(() => { fetchStock(); }, [code]);
+
+  const handleToggleWatch = async () => {
+    if (!stock) return;
+    try {
+      if (watched.watched && watched.id) {
+        await removeFromWatchlist(watched.id);
+        setWatched({ watched: false, id: null });
+        message.success('已取消关注');
+      } else {
+        const res = await addToWatchlist('stock', stock.id);
+        setWatched({ watched: true, id: res.id });
+        message.success('已添加关注');
+      }
+    } catch {
+      message.error('操作失败');
+    }
+  };
 
   const handleCollect = async () => {
     if (!code) return;
@@ -134,9 +154,18 @@ export default function StockDetailPage() {
                 <Title level={3} style={{ margin: 0 }}>{stock.name || stock.code}</Title>
                 <Text type="secondary">{stock.code}</Text>
               </div>
-              <Button type="primary" icon={<RobotOutlined />} loading={aiLoading} onClick={handleAI}>
-                AI 投资分析
-              </Button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  icon={watched.watched ? <StarFilled /> : <StarOutlined />}
+                  onClick={handleToggleWatch}
+                  style={{ color: watched.watched ? '#faad14' : undefined }}
+                >
+                  {watched.watched ? '已关注' : '关注'}
+                </Button>
+                <Button type="primary" icon={<RobotOutlined />} loading={aiLoading} onClick={handleAI}>
+                  AI 投资分析
+                </Button>
+              </div>
             </div>
           </Card>
         </Col>

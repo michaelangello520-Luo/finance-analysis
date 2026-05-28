@@ -80,6 +80,19 @@ export interface AIAnalysis {
   analysis: string;
 }
 
+export interface WatchlistItem {
+  id: number;
+  target_type: string;
+  target_id: number;
+  name: string;
+  code: string | null;
+}
+
+export interface WatchlistCheck {
+  watched: boolean;
+  id: number | null;
+}
+
 // --- API Functions ---
 
 export async function searchStock(query: string): Promise<SearchResult> {
@@ -129,5 +142,25 @@ export async function getLLMSettings(): Promise<LLMSettings> {
 
 export async function updateLLMSettings(provider: string): Promise<LLMSettings & { message: string }> {
   const { data } = await api.put<LLMSettings & { message: string }>('/settings/llm', { provider });
+  return data;
+}
+
+export async function getWatchlist(): Promise<WatchlistItem[]> {
+  const { data } = await api.get<WatchlistItem[]>('/watchlist');
+  return data;
+}
+
+export async function addToWatchlist(targetType: string, targetId: number): Promise<{ id: number; message: string }> {
+  const { data } = await api.post('/watchlist', { target_type: targetType, target_id: targetId });
+  return data;
+}
+
+export async function removeFromWatchlist(id: number): Promise<{ message: string }> {
+  const { data } = await api.delete(`/watchlist/${id}`);
+  return data;
+}
+
+export async function checkWatchlist(targetType: string, targetId: number): Promise<WatchlistCheck> {
+  const { data } = await api.get<WatchlistCheck>('/watchlist/check', { params: { target_type: targetType, target_id: targetId } });
   return data;
 }
