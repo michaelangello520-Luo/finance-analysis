@@ -15,6 +15,8 @@ class StockListItem(StockBase):
 
 class FinancialDataOut(BaseModel):
     period: str
+    revenue: float | None = None
+    net_profit: float | None = None
     roe: float | None = None
     gross_margin: float | None = None
     net_margin: float | None = None

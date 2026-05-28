@@ -32,7 +32,7 @@ export default function HomePage() {
       message.success(res.message);
       const industryId = (res as Record<string, unknown>).id;
       if (industryId) {
-        navigate(`/industry/${match[1]}`);
+        navigate(`/industry/${industryId}`);
       }
     } catch {
       message.error('行业数据采集失败');
