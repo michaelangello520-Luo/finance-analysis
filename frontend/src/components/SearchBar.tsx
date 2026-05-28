@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Input, AutoComplete } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
@@ -14,41 +14,45 @@ interface SearchOption {
 export default function SearchBar() {
   const [options, setOptions] = useState<SearchOption[]>([]);
   const navigate = useNavigate();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback((query: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
     if (!query.trim()) {
       setOptions([]);
       return;
     }
-    try {
-      const result = await searchStock(query);
-      const stockOpts: SearchOption[] = result.stocks.map((s: StockItem) => ({
-        value: `${s.name} (${s.code})`,
-        label: (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>{s.name}</span>
-            <span style={{ color: '#999' }}>{s.code} · 个股</span>
-          </div>
-        ),
-        type: 'stock',
-        id: s.code,
-      }));
-      const industryOpts: SearchOption[] = result.industries.map((i: IndustryItem) => ({
-        value: i.name,
-        label: (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>{i.name}</span>
-            <span style={{ color: '#999' }}>{i.sector || ''} · 行业</span>
-          </div>
-        ),
-        type: 'industry',
-        id: i.id,
-      }));
-      setOptions([...stockOpts, ...industryOpts]);
-    } catch {
-      setOptions([]);
-    }
-  };
+    timerRef.current = setTimeout(async () => {
+      try {
+        const result = await searchStock(query);
+        const stockOpts: SearchOption[] = result.stocks.map((s: StockItem) => ({
+          value: `${s.name} (${s.code})`,
+          label: (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>{s.name}</span>
+              <span style={{ color: '#999' }}>{s.code} · 个股</span>
+            </div>
+          ),
+          type: 'stock',
+          id: s.code,
+        }));
+        const industryOpts: SearchOption[] = result.industries.map((i: IndustryItem) => ({
+          value: i.name,
+          label: (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>{i.name}</span>
+              <span style={{ color: '#999' }}>{i.sector || ''} · 行业</span>
+            </div>
+          ),
+          type: 'industry',
+          id: i.id,
+        }));
+        setOptions([...stockOpts, ...industryOpts]);
+      } catch {
+        setOptions([]);
+      }
+    }, 300);
+  }, []);
 
   const handleSelect = (_value: string, option: SearchOption) => {
     if (option.type === 'stock') {
